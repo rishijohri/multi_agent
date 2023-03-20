@@ -3,11 +3,18 @@ from gymnasium import spaces
 import pygame
 import numpy as np
 
-class DotWorld(gym.Env):
+class MultidotWorld(gym.Env):
     metadata = {'render.modes': ['human', 'rgb_array'],
                 'render-fps': 4}
     
-    def __init__(self, render_mode=None, size:int=5, agents:int =1, error_reward:int=-2, success_reward:int=1, living_reward:int=-0.01, episode_length:int=100):
+    def __init__(self, 
+                 render_mode:str=None, 
+                 size:int=5, 
+                 agents:int =1, 
+                 error_reward:int=-2, 
+                 success_reward:int=1, 
+                 living_reward:int=-0.01, 
+                 episode_length:int=100):
         self.size  = size
         self.window_size = 512
         self.render_mode = render_mode
@@ -21,9 +28,9 @@ class DotWorld(gym.Env):
         self.window = None
         self.clock = None
         self.observation_space = spaces.Dict({
-            'agent': spaces.Sequence(spaces.Box(0, size-1, shape=(2,), dtype=np.int32)),
-            # 'agent': [spaces.Box(0, size-1, shape=(2,), dtype=np.int32)]*agents,
-            'target': spaces.Box(0, size-1, shape=(2,), dtype=np.int32),
+            'agent_1': spaces.Sequence(spaces.Box(0, size-1, shape=(2,), dtype=np.int32)),
+            'agent_2': spaces.Sequence(spaces.Box(0, size-1, shape=(2,), dtype=np.int32)),
+            # 'target': spaces.Box(0, size-1, shape=(2,), dtype=np.int32),
         })
 
         self.action_space = spaces.MultiDiscrete([5]*agents)
@@ -38,8 +45,8 @@ class DotWorld(gym.Env):
     
     def _get_obs(self):
         return {
-            'agent': self._agents_location,
-            'target': self._target_location
+            'agent1': self._agent1_location,
+            'agent2': self._agent2_location
         }
     
     def _get_info(self):
@@ -60,10 +67,11 @@ class DotWorld(gym.Env):
         '''
         super().reset(seed=seed)
         if seed:
-            self._agents_location = np.rint([self.np_random.integers(0, self.size, size=2, dtype=int, seed=seed) for _ in range(self.agents)])
+            self._agent1_location = np.rint([self.np_random.integers(0, self.size, size=2, dtype=int, seed=seed) for _ in range(self.agents)])
+            self._agent2_location = np.rint([self.np_random.integers(0, self.size, size=2, dtype=int, seed=seed) for _ in range(self.agents)])
         else:
-            self._agents_location = np.rint([self.np_random.integers(0, self.size, size=2, dtype=int) for _ in range(self.agents)])
-        self._target_location = self._agents_location[0]
+            self._agent1_location = np.rint([self.np_random.integers(0, self.size, size=2, dtype=int) for _ in range(self.agents)])
+            self._agent2_location = np.rint([self.np_random.integers(0, self.size, size=2, dtype=int) for _ in range(self.agents)])
 
         while self.chk_in_list(self._target_location, self._agents_location):
             if seed:
@@ -77,10 +85,8 @@ class DotWorld(gym.Env):
 
         if self.render_mode == 'human':
             self._render_frame()
-        
         return obs, info
-
-
+        
     def step(self, action):
         '''
         Step the environment. Action is required. 
@@ -172,14 +178,14 @@ class DotWorld(gym.Env):
                 0,
                 (0, pix_square_size * x),
                 (self.window_size, pix_square_size * x),
-                width=1
+                width=3
             )
             pygame.draw.line(
                 canvas,
                 0,
                 (pix_square_size * x, 0),
                 (pix_square_size * x, self.window_size),
-                width=1
+                width=3
             )
         
         if self.render_mode == 'human':
@@ -202,9 +208,10 @@ class DotWorld(gym.Env):
             pygame.quit()
             self.window = None
     
+    #todo: add render_frame_array method
 
 if __name__ == '__main__':
-    env = DotWorld(render_mode='human', size=15, agents=3)
+    env = MultidotWorld(render_mode='human', size=15, agents=3)
     state, _ = env.reset()
     print(type(state['agent'][0]), np.concatenate(state['agent']).ravel())
     while True:

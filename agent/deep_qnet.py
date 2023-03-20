@@ -10,7 +10,14 @@ from helper import ReplayMemory, Transition
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class DQN(nn.Module):
-    def __init__(self,env, n_observations, n_actions, eps_start, eps_end, eps_decay, batch_size):
+    def __init__(self,
+                 env, 
+                 n_observations:int, 
+                 n_actions:int, 
+                 eps_start:float, 
+                 eps_end:float, 
+                 eps_decay:float, 
+                 batch_size:int):
         super(DQN, self).__init__()
         self.env = env
         self.batch_size = batch_size
@@ -35,13 +42,15 @@ class DQN(nn.Module):
         eps_threshold = self.eps_end + (self.eps_start - self.eps_end) * \
             math.exp(-1. * steps_done / self.eps_decay)
         steps_done += 1
-        if sample > eps_threshold:
+        # print(f'sample: {sample}, eps_threshold: {eps_threshold}')
+        if sample < eps_threshold:
             with torch.no_grad():
                 # t.max(1) will return largest column value of each row.
                 # second column on max result is index of where max element was
                 # found, so we pick action with the larger expected reward.
                 return output.max(1)[1].view(1, 1), steps_done
         else:
-            return torch.tensor([[self.env.action_space.sample()]], device=device, dtype=torch.long), steps_done
+            # print('random sampled')
+            return torch.tensor([[self.env.single_action_space.sample()]], device=device, dtype=torch.long), steps_done
         
 
