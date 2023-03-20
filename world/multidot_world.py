@@ -208,7 +208,7 @@ class MultidotWorld(gym.Env):
             pygame.quit()
             self.window = None
     
-    #todo: add render_frame_array method
+    #todo: #2 add render_frame_array method
 
 if __name__ == '__main__':
     env = MultidotWorld(render_mode='human', size=15, agents=3)

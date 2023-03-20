@@ -53,7 +53,7 @@ def huber_optimize(memory: ReplayMemory,
                 print(non_final_next_states.shape, action_batch.shape, batch.next_state)
                 print(non_final_mask, "non_final_mask")
         next_state_action_values[non_final_mask] = torch.cat(next_state_action_list, dim=1)
-        # todo: check if this is correct or not
+        # todo: #1 check if this is correct or not
         # next_state_values[non_final_mask] = target_net(non_final_next_states).max(1)[0]
     expected_state_action_values = (next_state_action_values * gamma) + reward_batch
     criterion = nn.SmoothL1Loss()
