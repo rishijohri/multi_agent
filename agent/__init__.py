@@ -1,1 +1,2 @@
-from agent.deep_qnet import DQN
+from agent.deepQnet import DQN
+from agent.deepConv import DeepConv

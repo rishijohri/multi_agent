@@ -1,1 +1,1 @@
-plot_durations
+loss

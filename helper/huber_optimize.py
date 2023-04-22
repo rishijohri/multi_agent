@@ -17,13 +17,18 @@ def huber_optimize(memory: ReplayMemory,
                    optimizer,
                    device):
     if len(memory) <batch_size:
-        return
+        return -1
     transitions = memory.sample(batch_size)
     batch = Transition(*zip(*transitions)) 
     non_final_mask = torch.tensor(tuple(map(lambda s: s is not None,
                                         batch.next_state)), device=device, dtype=torch.bool)
-    non_final_next_states = torch.cat([s for s in batch.next_state
+    try:
+        non_final_next_states = torch.cat([s for s in batch.next_state
                                             if s is not None])
+    except:
+        print("Major error")
+        print(batch.next_state, "\n")
+        return -1
     state_batch = torch.cat(batch.state)
     action_batch = torch.cat(batch.action)
     reward_batch = torch.cat(batch.reward).unsqueeze(1)
@@ -44,14 +49,9 @@ def huber_optimize(memory: ReplayMemory,
         next_state_action_list = []
         for i in range(num_agents):
             # select and perform an action for each agent
-            try:
-                agent_state = non_final_next_states[:, [i*2, i*2+1, 2*num_agents, 2*num_agents+1]]
-                print(agent_state, "agent_state")
-                action_value = target_net(agent_state).max(1)[0].unsqueeze(1)
-                next_state_action_list.append(action_value)
-            except:
-                print(non_final_next_states.shape, action_batch.shape, batch.next_state)
-                print(non_final_mask, "non_final_mask")
+            agent_state = non_final_next_states[:, [i*2, i*2+1, 2*num_agents, 2*num_agents+1]]
+            action_value = target_net(agent_state).max(1)[0].unsqueeze(1)
+            next_state_action_list.append(action_value)
         next_state_action_values[non_final_mask] = torch.cat(next_state_action_list, dim=1)
         # todo: #1 check if this is correct or not
         # next_state_values[non_final_mask] = target_net(non_final_next_states).max(1)[0]
@@ -62,3 +62,4 @@ def huber_optimize(memory: ReplayMemory,
     loss.backward()
     nn.utils.clip_grad_value_(policy_net.parameters(), 100)
     optimizer.step()
+    return loss.item()

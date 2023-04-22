@@ -1,19 +1,21 @@
-import time # for sleep
+import time  # for sleep
+from collections import deque, namedtuple
+from itertools import count
+
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.optim as optim
 import torch.nn.functional as F
-from collections import namedtuple, deque
-from itertools import count
+import torch.optim as optim
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# custom packages
-from world import dot_world
 from agent import DQN
 from helper import ReplayMemory, Transition, huber_optimize
+# custom packages
+from world import dot_world
 
 # for interactive plots
 is_ipython = 'inline' in matplotlib.get_backend()
@@ -31,10 +33,10 @@ EPS_DECAY = 1000
 LR = 1e-4
 GAMMA = 0.99
 NUM_EPISODES = 1000
-NUM_AGENTS = 3
+NUM_AGENTS = 1
 BATCH_SIZE = 2
 
-env = dot_world.DotWorld(render_mode='human', size=50, agents=NUM_AGENTS)
+env = dot_world.DotWorld(render_mode='human', size=5, agents=NUM_AGENTS, episode_length=50)
 state, _ = env.reset()
 n_actions = env.single_action_space.n
 n_observations = 4 # considering single agent observation space
@@ -52,6 +54,7 @@ for i_episode in range(NUM_EPISODES):
     state = np.concatenate((state['agent'], np.expand_dims(state['target'], 0)), axis=0)
     state = torch.tensor(state, dtype=torch.float32, device=device).flatten().unsqueeze(0)
     # print(state.shape)
+    total_loss = []
     for t in count():
         actions = [ ]
         for i in range(NUM_AGENTS):
@@ -66,7 +69,9 @@ for i_episode in range(NUM_EPISODES):
         next_state, reward, terminated, truncated, _ = env.step(actions)
         reward = torch.tensor([reward], device=device)
         done = terminated or truncated
-
+        screen = env.render_frame_array(agent_id=1) # render the first agent
+        # plt.imshow(screen.transpose(1, 2, 0))
+        plt.pause(0.001)
         if terminated:
             next_state = None
         else:
@@ -80,8 +85,9 @@ for i_episode in range(NUM_EPISODES):
         state = next_state
 
         # Perform one step of the optimization (on the policy network)
-        huber_optimize(memory, BATCH_SIZE, GAMMA, NUM_AGENTS, policy_net, target_net, optimizer, device)
-
+        loss = huber_optimize(memory, BATCH_SIZE, GAMMA, NUM_AGENTS, policy_net, target_net, optimizer, device)
+        if loss!=-1:
+            total_loss.append(loss)
         # Soft update of the target network's weights
         # θ′ ← τ θ + (1 −τ )θ′
         target_net_state_dict = target_net.state_dict()
@@ -89,12 +95,11 @@ for i_episode in range(NUM_EPISODES):
         for key in policy_net_state_dict:
             target_net_state_dict[key] = policy_net_state_dict[key]*TAU + target_net_state_dict[key]*(1-TAU)
         target_net.load_state_dict(target_net_state_dict)
-
         if done:
             episode_durations.append(t + 1)
             # plot_durations()
             break
-
+    print(f"at Episode {i_episode} Loss is {round(sum(total_loss)/len(total_loss), 4)}", end="\r")
 print('Complete')
 # plot_durations(episode_durations=episode_durations, show_result=True, is_ipython=is_ipython)
 plt.ioff()

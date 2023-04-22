@@ -138,10 +138,11 @@ class MultidotWorld(gym.Env):
         if self.render_mode =='rgb_array':
             return self._render_frame()
 
-    def _render_frame(self):
+    def _render_frame(self, render_mode=None):
         '''
         Render the environment frame by frame
         '''
+        render_mode = render_mode or self.render_mode
         if self.window is None and self.render_mode == 'human':
             pygame.init()
             pygame.display.init()
@@ -188,7 +189,7 @@ class MultidotWorld(gym.Env):
                 width=3
             )
         
-        if self.render_mode == 'human':
+        if render_mode == 'human':
             self.window.blit(canvas, canvas.get_rect())
             pygame.event.pump()
             pygame.display.update()
@@ -209,7 +210,12 @@ class MultidotWorld(gym.Env):
             self.window = None
     
     #todo: #2 add render_frame_array method
-
+    def render_frame_array(self, agent_id=0):
+        '''
+        Render the environment frame by frame and return the frame as a numpy array
+        '''
+        array = self._render_frame(render_mode='rgb_array')
+        return array
 if __name__ == '__main__':
     env = MultidotWorld(render_mode='human', size=15, agents=3)
     state, _ = env.reset()

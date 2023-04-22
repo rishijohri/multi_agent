@@ -132,10 +132,11 @@ class DotWorld(gym.Env):
         if self.render_mode =='rgb_array':
             return self._render_frame()
 
-    def _render_frame(self):
+    def _render_frame(self, render_mode=None, agent_id=None):
         '''
         Render the environment frame by frame
         '''
+        render_mode = render_mode or self.render_mode
         if self.window is None and self.render_mode == 'human':
             pygame.init()
             pygame.display.init()
@@ -157,14 +158,21 @@ class DotWorld(gym.Env):
         )
 
         # draw agent
-        for agent_location in self._agents_location:
-            pygame.draw.circle(
-                canvas,
-                (0, 0, 255),
-                (agent_location+0.5) * pix_square_size,
-                pix_square_size / 3,
-            )
-
+        for i, agent_location in enumerate(self._agents_location):
+            if i==agent_id:
+                pygame.draw.circle(
+                    canvas,
+                    (0, 255, 0),
+                    (agent_location+0.5) * pix_square_size,
+                    pix_square_size / 3,
+                )
+            else:
+                pygame.draw.circle(
+                    canvas,
+                    (0, 0, 255),
+                    (agent_location+0.5) * pix_square_size,
+                    pix_square_size / 3,
+                )
         # draw grid
         for x in range(self.size+1):
             pygame.draw.line(
@@ -182,7 +190,7 @@ class DotWorld(gym.Env):
                 width=1
             )
         
-        if self.render_mode == 'human':
+        if render_mode == 'human':
             self.window.blit(canvas, canvas.get_rect())
             pygame.event.pump()
             pygame.display.update()
@@ -190,9 +198,16 @@ class DotWorld(gym.Env):
             self.clock.tick(self.metadata['render-fps'])
         else:
             return np.transpose(
-                np.array(pygame.surfarray.pixels3d(canvas), axes=(1, 0, 2))
+                np.array(pygame.surfarray.pixels3d(canvas))
             )
     
+    def render_frame_array(self, agent_id=0):
+        '''
+        Render the environment frame by frame and return the frame as a numpy array
+        '''
+        array = self._render_frame(render_mode='rgb_array', agent_id=agent_id)
+        return array
+
     def close(self):
         '''
         Close the environment. Call this method when you are done with the environment.
@@ -202,6 +217,7 @@ class DotWorld(gym.Env):
             pygame.quit()
             self.window = None
     
+
 
 if __name__ == '__main__':
     env = DotWorld(render_mode='human', size=15, agents=3)
