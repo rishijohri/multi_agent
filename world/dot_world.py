@@ -7,16 +7,24 @@ class DotWorld(gym.Env):
     metadata = {'render.modes': ['human', 'rgb_array'],
                 'render-fps': 4}
     
-    def __init__(self, render_mode=None, size:int=5, agents:int =1, error_reward:int=-2, success_reward:int=1, living_reward:int=-0.01, episode_length:int=100):
+    def __init__(self, 
+                render_mode=None, 
+                size:int=5, 
+                agents:int =1, 
+                error_reward:int=-2, 
+                success_reward:int=10, 
+                living_reward:int=-0.05, 
+                img_mode:bool=False,
+                episode_length:int=100):
         self.size  = size
-        self.window_size = 512
+        self.window_size = 500
         self.render_mode = render_mode
         self.agents = agents
         self.error_reward = error_reward
         self.success_reward = success_reward
         self.living_reward = living_reward
         self.episode_length = episode_length
-
+        self.img_mode = img_mode
         self.steps = 0
         self.window = None
         self.clock = None
@@ -27,25 +35,32 @@ class DotWorld(gym.Env):
         })
 
         self.action_space = spaces.MultiDiscrete([5]*agents)
-        self.single_action_space = spaces.Discrete(5)
+        self.single_action_space = spaces.Discrete(4)
         self._action_to_direction = {
             0: np.array([0, 1]),
             1: np.array([1, 0]),
             2: np.array([0, -1]),
-            3: np.array([-1, 0]),
-            4: np.array([0, 0])
+            3: np.array([-1, 0])
         }
     
     def _get_obs(self):
+        if self.img_mode:
+            return self._get_img_obs()
         return {
             'agent': self._agents_location,
             'target': self._target_location
         }
     
+    def _get_img_obs(self):
+        states = []
+        for i in len(self._agents_location):
+            state = self.render_frame_array(render_mode='rgb_array', agent=i)
+            states.append(state)
+        return states
     def _get_info(self):
         return {"distance": [np.linalg.norm(agent_location - self._target_location, ord=1) for agent_location in self._agents_location]}
 
-    def chk_in_list(self, x, lst):
+    def _chk_in_list(self, x, lst):
         '''
         Return true if present, else false
         '''
@@ -65,7 +80,7 @@ class DotWorld(gym.Env):
             self._agents_location = np.rint([self.np_random.integers(0, self.size, size=2, dtype=int) for _ in range(self.agents)])
         self._target_location = self._agents_location[0]
 
-        while self.chk_in_list(self._target_location, self._agents_location):
+        while self._chk_in_list(self._target_location, self._agents_location):
             if seed:
                 self._target_location = self.np_random.integers(0, self.size, size=2, dtype=int, seed=seed)
             else:
@@ -99,9 +114,13 @@ class DotWorld(gym.Env):
         new_agents_location = self._agents_location
         # action is an array of size agents and each element is an action. action can be 0,1,2,3,4 representing up, right, down, left, stay
         for i in range(self.agents):
-            new_agents_location[i] = new_agents_location[i] + self._action_to_direction[action[i]]
-            new_agents_location[i] = np.clip(new_agents_location[i], 0, self.size-1)
-        
+            if self._chk_in_list(new_agents_location[i] + self._action_to_direction[action[i]], new_agents_location):
+                # if the new location is already occupied
+                new_agents_location[i] = new_agents_location[i]
+            else:
+                new_agents_location[i] = new_agents_location[i] + self._action_to_direction[action[i]]
+                new_agents_location[i] = np.clip(new_agents_location[i], 0, self.size-1)
+
         if len(np.unique(new_agents_location, axis=0)) < self.agents:
             # if there is a collision
             observation = self._get_obs()
@@ -109,20 +128,20 @@ class DotWorld(gym.Env):
             reward = self.error_reward
             terminated = True 
             return observation, reward, terminated, truncated, info
-        elif self.chk_in_list(self._target_location, new_agents_location):
+        elif self._chk_in_list(self._target_location, new_agents_location):
             # if target is reached
             reward = self.success_reward
             terminated = True
+            # print("Reached Reward")
         else:
             terminated = False
             reward = self.living_reward
         self._agents_location = new_agents_location
         observation = self._get_obs()
         info = self._get_info()
-
+        # renders the environment
         if self.render_mode == 'human':
             self._render_frame()
-
         return observation, reward, terminated,truncated, info
     
     def render(self):

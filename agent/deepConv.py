@@ -40,6 +40,7 @@ class DeepConv(nn.Module):
         x = self.layer3(x)
         x = F.relu(x)
         x = x.view(x.size(0), -1)
+        x = nn.Flatten()(x)
         x = self.layer4(x)
         return x
     

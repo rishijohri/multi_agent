@@ -32,11 +32,11 @@ EPS_END = 0.05
 EPS_DECAY = 1000
 LR = 1e-4
 GAMMA = 0.99
-NUM_EPISODES = 1000
-NUM_AGENTS = 1
-BATCH_SIZE = 2
+NUM_EPISODES = 5000
+NUM_AGENTS = 3
+BATCH_SIZE = 8
 
-env = dot_world.DotWorld(render_mode='human', size=5, agents=NUM_AGENTS, episode_length=50)
+env = dot_world.DotWorld(render_mode='rgb_array', size=10, agents=NUM_AGENTS, episode_length=50)
 state, _ = env.reset()
 n_actions = env.single_action_space.n
 n_observations = 4 # considering single agent observation space
@@ -47,6 +47,11 @@ target_net = DQN(env, n_observations, n_actions, EPS_START, EPS_END, EPS_DECAY, 
 optimizer = optim.AdamW(policy_net.parameters(), lr=LR, amsgrad=True)
 steps_done = 0
 
+# policy_net.load_state_dict(torch.load("./models/policy_net.dict"))
+# target_net.load_state_dict(torch.load("./models/target_net.dict"))
+losses = []
+steps = []
+rewards = []
 for i_episode in range(NUM_EPISODES):
     # Initialize the environment and get it's state
     state, info = env.reset()
@@ -55,6 +60,7 @@ for i_episode in range(NUM_EPISODES):
     state = torch.tensor(state, dtype=torch.float32, device=device).flatten().unsqueeze(0)
     # print(state.shape)
     total_loss = []
+    total_reward= 0
     for t in count():
         actions = [ ]
         for i in range(NUM_AGENTS):
@@ -64,14 +70,15 @@ for i_episode in range(NUM_EPISODES):
             action, _ = policy_net.select_action(action_space, steps_done)
             actions.append(action.item())
         actions = np.array(actions, dtype=np.int32)
-
-        # Observe new state
+        
         next_state, reward, terminated, truncated, _ = env.step(actions)
+        total_reward += reward
         reward = torch.tensor([reward], device=device)
         done = terminated or truncated
         screen = env.render_frame_array(agent_id=1) # render the first agent
+        # print(screen.shape)
         # plt.imshow(screen.transpose(1, 2, 0))
-        plt.pause(0.001)
+        # plt.pause(0.001)
         if terminated:
             next_state = None
         else:
@@ -99,7 +106,20 @@ for i_episode in range(NUM_EPISODES):
             episode_durations.append(t + 1)
             # plot_durations()
             break
-    print(f"at Episode {i_episode} Loss is {round(sum(total_loss)/len(total_loss), 4)}", end="\r")
+    losses.append(sum(total_loss)/(len(total_loss)+1))
+    steps.append(t)
+    rewards.append(total_reward)
+    print(f"at Episode {i_episode} Loss is {round(sum(total_loss)/(len(total_loss)+1), 4)}", end="\r")
+torch.save(policy_net.state_dict(), "./models/policy_net.dict")
+torch.save(target_net.state_dict(), "./models/target_net.dict")
+fig, axs = plt.subplots(nrows=1, ncols=3, figsize=(12, 4))
+axs[0].plot(losses)
+axs[1].plot(steps)
+axs[2].plot(rewards)
+axs[0].set_title('LOSSES')
+axs[1].set_title('STEPS')
+axs[2].set_title('REWARDS')
+plt.show()
 print('Complete')
 # plot_durations(episode_durations=episode_durations, show_result=True, is_ipython=is_ipython)
 plt.ioff()

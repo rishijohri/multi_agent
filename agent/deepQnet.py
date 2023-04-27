@@ -24,15 +24,24 @@ class DQN(nn.Module):
         self.eps_start = eps_start
         self.eps_end = eps_end
         self.eps_decay = eps_decay
-        self.layer1 = nn.Linear(n_observations, 128)
+        self.layer1 = nn.Linear(n_observations, 32)
         self.layer2 = nn.Linear(128, 128)
-        self.layer3 = nn.Linear(128, n_actions)
+        
+        self.layer3 = nn.Linear(32, n_actions)
     # Called with either one element to determine next action, or a batch
     # during optimization. Returns tensor([[left0exp,right0exp]...]).
     def forward(self, x):
         x = self.layer1(x)
         x = F.relu(x)
-        x = self.layer2(x)
+        x = nn.Linear(32, 64)(x)
+        x = F.relu(x)
+        x = nn.Linear(64, 128)(x)
+        x = F.relu(x)
+        x = nn.Linear(128, 128)(x)
+        x = F.relu(x)
+        x = nn.Linear(128, 64)(x)
+        x = F.relu(x)
+        x = nn.Linear(64, 32)(x)
         x = F.relu(x)
         x = self.layer3(x)
         return x
