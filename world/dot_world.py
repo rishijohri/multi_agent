@@ -57,6 +57,7 @@ class DotWorld(gym.Env):
             state = self.render_frame_array(render_mode='rgb_array', agent=i)
             states.append(state)
         return states
+    
     def _get_info(self):
         return {"distance": [np.linalg.norm(agent_location - self._target_location, ord=1) for agent_location in self._agents_location]}
 
@@ -94,7 +95,6 @@ class DotWorld(gym.Env):
             self._render_frame()
         
         return obs, info
-
 
     def step(self, action):
         '''

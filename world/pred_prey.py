@@ -2,6 +2,7 @@ import gymnasium as gym
 from gymnasium import spaces
 import pygame
 import numpy as np
+from collections import deque
 
 class PredatorPreyEnv(gym.Env):
     metadata = {'render.modes': ['human', 'rgb_array'],
@@ -50,7 +51,9 @@ class PredatorPreyEnv(gym.Env):
             3: np.array([-1, 0]),
             4: np.array([0, 0])
         }
-    
+        self.frame_history = deque(maxlen=4)
+        self.history_length = 4
+
     def _get_obs(self):
         if self.img_mode:
             return self._get_np_arr_obs()
@@ -84,7 +87,8 @@ class PredatorPreyEnv(gym.Env):
         self.active_prey = [True for i in range(self.prey_num)]
         if self.render_mode == 'human':
             self._render_frame()
-        return self._get_obs(), self._get_info()
+        self._save_frame_history()
+        return self._get_frame_history(self.history_length), self._get_info()
     
     def _get_reward(self):
         # if any predator reaches prey, success. else, living reward
@@ -93,6 +97,7 @@ class PredatorPreyEnv(gym.Env):
             if self._predator_location[i] in self._prey_location:
                 rewards[i] = self.success_reward
         return rewards
+    
     def _get_prey_reward(self):
         # if any predator reaches prey, success. else, living reward
         rewards = [self.success_reward for i in range(self.prey_num)]
@@ -132,6 +137,14 @@ class PredatorPreyEnv(gym.Env):
         if self.render_mode =='rgb_array':
             return self._render_frame()
 
+    def _save_frame_history(self):
+        self.frame_history.append(self._get_obs())
+
+    def _get_frame_history(self, history=4):
+        if len(self.frame_history) < history:
+            return None
+        return list(self.frame_history)[-history:]
+
     def step(self, action_pred, action_prey):
         # action_pred is a list of actions for each predator
         # action_prey is a list of actions for each prey
@@ -148,10 +161,9 @@ class PredatorPreyEnv(gym.Env):
         self.steps += 1
         # move predator
         for i in range(self.predator_num):
-            if self.active_predator[i] == False:
+            if self.active_predator[i] == False:  # if predator is dead,
                 continue
             if i < len(action_pred):
-                
                 action = action_pred[i]
             else:
                 action = self.single_action_space.sample()
@@ -161,7 +173,7 @@ class PredatorPreyEnv(gym.Env):
 
         # move prey
         for i in range(self.prey_num):
-            if self.active_prey[i] == False:
+            if self.active_prey[i] == False:  # if prey is dead,
                 continue
             if i < len(action_prey):
                 action = action_prey[i]
@@ -188,8 +200,8 @@ class PredatorPreyEnv(gym.Env):
         }
         if self.render_mode == 'human':
             self._render_frame()
-
-        return self._get_obs(), reward, done, self._get_info()
+        self._save_frame_history()
+        return self._get_frame_history(self.history_length), reward, done, self._get_info()
         
     def _render_predator_frame(self, predator_id:int=None):
         # the predator with predator_id will be in the center of the frame and the frame will be of size vision x vision

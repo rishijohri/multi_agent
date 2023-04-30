@@ -106,6 +106,7 @@ for i_episode in range(NUM_EPISODES):
 
 
         # Store the transition in memory
+        # todo: The state now contains history as well, refer the Environment to see structure of state. Write the training code to take history as well
         for i in range(NUM_PRED):
             state_i = state["predator"][i]
             state_i = torch.tensor(state_i, dtype=torch.float32, device=device).flatten()
