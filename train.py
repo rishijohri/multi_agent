@@ -109,7 +109,6 @@ for i_episode in range(NUM_EPISODES):
             state_i = torch.cat(state_i, dim=0)
             print(state_i.shape)
             # state_i = torch.tensor(state_i, dtype=torch.float32, device=device).unsqueeze(0)
-            print(state_i.shape)
             action_i, _ = predators[i].select_action(state_i, epsilon_predator)
             predator_actions.append(action_i)
         prey_actions = []
@@ -164,11 +163,11 @@ for i_episode in range(NUM_EPISODES):
             episode_durations.append(i_step + 1)
             break
     print(f"Episode {i_episode} finished after {i_step+1} steps epsilon {epsilon_predator:.2f} {epsilon_prey:.2f}")
-# save model in models folder
-for i in range(NUM_PRED):
-    torch.save(predators[i].policy_net.state_dict(), f"./models/policy_net_{i}.dict")
-    torch.save(predators[i].target_net.state_dict(), f"./models/target_net_{i}.dict")
-    torch.save(predators[i].optimizer.state_dict(), f"./models/optimizer_{i}.dict")
+    # save model in models folder
+    for i in range(NUM_PRED):
+        torch.save(predators[i].policy_net.state_dict(), f"./models/policy_net_{i}.dict")
+        torch.save(predators[i].target_net.state_dict(), f"./models/target_net_{i}.dict")
+        torch.save(predators[i].optimizer.state_dict(), f"./models/optimizer_{i}.dict")
 plt.plot(episode_durations)
 plt.show()
 a = input("press any key to continue")
