@@ -39,7 +39,7 @@ class DQN(nn.Module):
         self.conv3 = nn.Conv2d(32, 32, kernel_size=2)
         self.bn3 = nn.BatchNorm2d(32)
         # fc1 has size equal to resulting flattened conv layer
-        self.fc1 = nn.Linear(100, 256)
+        self.fc1 = nn.Linear(128, 256)
         self.fc2 = nn.Linear(256, output_size)
 
     def forward(self, x):
@@ -100,7 +100,7 @@ class RL_CNN():
         self.loss_fn = nn.MSELoss()
         self.memory = ReplayMemory(replay_size)
     
-    def forward(self, state):
+    def act(self, state):
         state = torch.tensor(state, dtype=torch.float32).unsqueeze(0).to(self.device)
         q_values = self.policy_net(state)
         return q_values
@@ -142,7 +142,7 @@ class RL_CNN():
     def update_target_model(self):
         self.target_net.load_state_dict(self.policy_net.state_dict())
 
-    def select_action(self, state, epsilon:int=0.1):
+    def select_action(self, state, epsilon:float=0.1):
         # returns the action and the q value associated with it
         q_values = self.policy_net(state)
         if random.random() < epsilon:

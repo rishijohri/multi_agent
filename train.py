@@ -13,7 +13,7 @@ import torch.optim as optim
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 from agent import RL_CNN, RandomAgent
-from helper import ReplayMemory, Transition, huber_optimize
+from helper import ReplayMemory, Transition
 # custom packages
 from world import PredatorPreyEnv
 
@@ -103,17 +103,16 @@ for i_episode in range(NUM_EPISODES):
                 break
             continue
         for i in range(NUM_PRED):
-            # print(state)
             state_i = [torch.tensor(s["predator"][i], dtype=torch.float32, device=device) for s in state]
-            print(state_i)
-            state_i = torch.cat(state_i, dim=0)
-            print(state_i.shape)
+            # print(len(state_i), state_i[0].shape, "BEFORE")
+            state_i = torch.cat(state_i, dim=0).unsqueeze(0)
+            # print(state_i.shape, "AFTER")
             # state_i = torch.tensor(state_i, dtype=torch.float32, device=device).unsqueeze(0)
             action_i, _ = predators[i].select_action(state_i, epsilon_predator)
             predator_actions.append(action_i)
         prey_actions = []
         for i in range(NUM_PREY):
-            state_i = state["prey"][i]
+            state_i = [torch.tensor(s["prey"][i], dtype=torch.float32, device=device) for s in state]
             action_i, _= preys[i].select_action(state_i, epsilon_prey)
             prey_actions.append(action_i)
 
@@ -124,21 +123,21 @@ for i_episode in range(NUM_EPISODES):
         # Store the transition in memory
         # todo: The state now contains history as well, refer the Environment to see structure of state. Write the training code to take history as well
         for i in range(NUM_PRED):
-            state_i = state["predator"][i]
-            state_i = torch.tensor(state_i, dtype=torch.float32, device=device).flatten()
-            next_state_i = next_state["predator"][i]
+            state_i = [torch.tensor(s["predator"][i], dtype=torch.float32, device=device) for s in state]
+            state_i = torch.cat(state_i, dim=0)
+            next_state_i = [torch.tensor(s["predator"][i], dtype=torch.float32, device=device) for s in next_state]
+            next_state_i = torch.cat(next_state_i, dim=0)
             reward_i = reward["predator"][i]
-            next_state_i = torch.tensor(next_state_i, dtype=torch.float32, device=device).flatten()
             action_i = predator_actions[i]
             predators[i].memory.push(state_i, action_i, reward_i, next_state_i,done)
         for i in range(NUM_PREY):
-            state_i = state["prey"][i]
-            state_i = torch.tensor(state_i, dtype=torch.float32, device=device).flatten()
-            next_state_i = next_state["prey"][i]
+            state_i = [torch.tensor(s["prey"][i], dtype=torch.float32, device=device) for s in state]
+            state_i = torch.cat(state_i, dim=0)
+            next_state_i = [torch.tensor(s["prey"][i], dtype=torch.float32, device=device) for s in next_state]
+            next_state_i = torch.cat(next_state_i, dim=0)
             reward_i = reward["prey"][i]
-            next_state_i = torch.tensor(next_state_i, dtype=torch.float32, device=device).flatten()
-            action_i = prey_actions[i]
-            preys[i].memory.push(state_i, action_i,  reward_i, next_state_i, done)
+            action_i = predator_actions[i]
+            predators[i].memory.push(state_i, action_i, reward_i, next_state_i,done)
         
         # update the policy net and target net
         for i in range(NUM_PRED):
