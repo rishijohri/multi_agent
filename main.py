@@ -63,6 +63,8 @@ for i_episode in range(NUM_EPISODES):
     total_reward= 0
     for t in count():
         actions = [ ]
+        
+
         for i in range(NUM_AGENTS):
             # select and perform an action for each agent
             agent_state = state[:, [i*2, i*2+1, 2*NUM_AGENTS, 2*NUM_AGENTS+1]]

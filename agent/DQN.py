@@ -39,7 +39,7 @@ class DQN(nn.Module):
         self.conv3 = nn.Conv2d(32, 32, kernel_size=2)
         self.bn3 = nn.BatchNorm2d(32)
         # fc1 has size equal to resulting flattened conv layer
-        self.fc1 = np.Linear()
+        self.fc1 = nn.Linear(100, 256)
         self.fc2 = nn.Linear(256, output_size)
 
     def forward(self, x):

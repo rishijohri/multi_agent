@@ -64,7 +64,7 @@ rewards = []
 # the input to the policy net i is the vision of the predator i only
 # each predator and prey has its own memory
 # each predator and prey has its own optimizer
-predators = [RL_CNN(VISION*VISION*3, n_actions, linear=True, lr=0.001, gamma=0.99) 
+predators = [RL_CNN((12,VISION,VISION), n_actions, linear=False, lr=0.001, gamma=0.99) 
                for i in range(NUM_PRED)]
 
 memories = [ReplayMemory(10000) for i in range(NUM_PRED)]
@@ -90,9 +90,26 @@ for i_episode in range(NUM_EPISODES):
     for i_step in count():
         # Select and perform an action
         predator_actions = []
+        if state is None:
+            pred_actions = [0 for _ in range(NUM_PRED)]
+            prey_actions = [0 for _ in range(NUM_PREY)]
+            next_state, reward, done, info = env.step(pred_actions, prey_actions)
+            steps_done+=1
+            # Move to the next state
+            state = next_state
+            # if done or i == env.episode_length-1:
+            if done:
+                episode_durations.append(i_step + 1)
+                break
+            continue
         for i in range(NUM_PRED):
-            state_i = state["predator"][i]
-            state_i = torch.tensor(state_i, dtype=torch.float32, device=device).flatten().unsqueeze(0)
+            # print(state)
+            state_i = [torch.tensor(s["predator"][i], dtype=torch.float32, device=device) for s in state]
+            print(state_i)
+            state_i = torch.cat(state_i, dim=0)
+            print(state_i.shape)
+            # state_i = torch.tensor(state_i, dtype=torch.float32, device=device).unsqueeze(0)
+            print(state_i.shape)
             action_i, _ = predators[i].select_action(state_i, epsilon_predator)
             predator_actions.append(action_i)
         prey_actions = []
