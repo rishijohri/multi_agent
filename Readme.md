@@ -19,3 +19,32 @@ any environment should be represented as a class (inherited from gymnasium) and 
 4. render(self, **kwargs), also it should have the option to choose from different render modes
 5. close(self, **kwargs)
 
+
+# State
+
+[
+    {
+    "predator": [
+        (3, VISION, VISION)nd array,
+        ..... number of predators
+        ],
+    "prey": [
+        [3, VISION, VISION],
+        ..... number of preys
+        ]
+    }
+......history times
+]
+
+
+# Reward
+{
+    "predator": [
+            reward,
+        ..... number of predators
+    ],
+    "prey": [
+            reward,
+        ..... number of preys
+    ]
+}

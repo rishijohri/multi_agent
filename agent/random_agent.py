@@ -15,10 +15,12 @@ class RandomAgent():
                  lr=0.001, 
                  gamma=0.99, 
                  replay_size=10000, 
-                 batch_size=4):
+                 batch_size=4,
+                 fix_pos = False):
         self.input_size = input_size
         self.output_size = output_size
         self.memory = ReplayMemory(replay_size)
+        self.fix_pos = fix_pos
     def act(self, state):
         return np.random.randint(self.output_size)
     
@@ -32,4 +34,6 @@ class RandomAgent():
         pass
 
     def select_action(self, state, epsilon=0.1):
+        if self.fix_pos:
+            return 4, 0
         return np.random.randint(self.output_size), 0

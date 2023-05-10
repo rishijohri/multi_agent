@@ -12,7 +12,7 @@ import torch.optim as optim
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-from agent import RL_CNN, RandomAgent
+from agent import RL_CNN, RandomAgent, DDPGAgent
 from helper import ReplayMemory, Transition
 # custom packages
 from world import PredatorPreyEnv
@@ -137,7 +137,7 @@ for i_episode in range(NUM_EPISODES):
             next_state_i = torch.cat(next_state_i, dim=0)
             reward_i = reward["prey"][i]
             action_i = predator_actions[i]
-            predators[i].memory.push(state_i, action_i, reward_i, next_state_i,done)
+            preys[i].memory.push(state_i, action_i, reward_i, next_state_i,done)
         
         # update the policy net and target net
         for i in range(NUM_PRED):

@@ -14,11 +14,14 @@ class PredatorPreyEnv(gym.Env):
                 vision:int=5,
                 predator:int =3,
                 prey:int =1,
-                error_reward:int=-2,
-                success_reward:int=10,
-                living_reward:int=-0.05,
+                error_reward:float=-2,
+                success_reward:float=10,
+                living_reward:float=-1,
                 img_mode:bool=False,
-                episode_length:int=100):
+                episode_length:int=100,
+                history_length:int=4,
+                communication_bits:int=0,
+                cooperate:float=1):
         self.size  = size
         self.vision = vision
         self.window_size = 500
@@ -36,6 +39,7 @@ class PredatorPreyEnv(gym.Env):
         self.window = None
         self.clock = None
         self.render_scale = 1
+        self.cooperate = cooperate
         self.observation_space = spaces.Dict({
             'predator': spaces.Sequence(spaces.Box(0, size-1, shape=(2,), dtype=np.int32)),
             'prey': spaces.Box(0, size-1, shape=(2,), dtype=np.int32),
@@ -52,7 +56,11 @@ class PredatorPreyEnv(gym.Env):
             4: np.array([0, 0])
         }
         self.frame_history = deque(maxlen=4)
-        self.history_length = 4
+        self.history_length = history_length
+        self.communication_bits = communication_bits
+        if self.communication_bits>0:
+            self.pred_communication = np.zeros((self.predator_num))
+            self.prey_communication = np.zeros((self.prey_num))
 
     def _get_obs(self):
         if self.img_mode:
@@ -79,7 +87,7 @@ class PredatorPreyEnv(gym.Env):
     def _get_info(self):
         return {}
     
-    def reset(self, *, seed: int=None, options=None):
+    def reset(self, *, seed: int=1, options=None):
         self._predator_location = np.random.randint(0, self.size, size=(self.predator_num, 2))
         self._prey_location = np.random.randint(0, self.size, size=(self.prey_num, 2))
         self.steps = 0
@@ -94,8 +102,12 @@ class PredatorPreyEnv(gym.Env):
         # if any predator reaches prey, success. else, living reward
         rewards = [self.living_reward for i in range(self.predator_num)]
         for i in range(self.predator_num):
-            if self._predator_location[i] in self._prey_location:
-                rewards[i] = self.success_reward
+            for j in range(self.prey_num):
+                if np.all(self._predator_location[i]==self._prey_location[j]):
+                    rewards = [self.cooperate*self.success_reward for i in range(self.predator_num)]
+                    rewards[i] = self.success_reward
+                    # print("EATEN")
+                    return rewards
         return rewards
     
     def _get_prey_reward(self):
@@ -145,7 +157,7 @@ class PredatorPreyEnv(gym.Env):
             return None
         return list(self.frame_history)[-history:]
 
-    def step(self, action_pred, action_prey):
+    def step(self, action_pred, action_prey, pred_communication=None, prey_communication=None):
         # action_pred is a list of actions for each predator
         # action_prey is a list of actions for each prey
         # action is a number from 0 to 3
@@ -190,9 +202,14 @@ class PredatorPreyEnv(gym.Env):
         for i in range(self.predator_num):
             for j in range (self.prey_num):
                 if np.all(self._predator_location[i] == self._prey_location[j]):
-                    print("EATEN !!!")
+                    # print("EATEN !!!")
                     self.active_prey[j] = False
         
+        #save communication of agents
+        if self.communication_bits > 0:
+            self.pred_communication = pred_communication
+            self.prey_communication = prey_communication
+
         done = self._is_done()
         reward = {
             'predator': pred_reward,
@@ -203,7 +220,7 @@ class PredatorPreyEnv(gym.Env):
         self._save_frame_history()
         return self._get_frame_history(self.history_length), reward, done, self._get_info()
         
-    def _render_predator_frame(self, predator_id:int=None):
+    def _render_predator_frame(self, predator_id:int=0):
         # the predator with predator_id will be in the center of the frame and the frame will be of size vision x vision
         # the predator with predator_id will be green
         # if predator_id is None, the function ends
@@ -213,7 +230,7 @@ class PredatorPreyEnv(gym.Env):
 
         if predator_id==None:
             return
-        frame = np.zeros((3, self.vision, self.vision), dtype=np.uint8)
+        frame = np.zeros((4, self.vision, self.vision), dtype=np.uint8)
         # draw predator
         pred_loc = self._predator_location[predator_id]
         min_pred_loc = pred_loc - np.array([self.vision//2, self.vision//2])
@@ -221,12 +238,21 @@ class PredatorPreyEnv(gym.Env):
 
         # add predator to centre of frame
         frame[1, self.vision//2, self.vision//2] = self.render_scale 
+
         # for each predator or prey within min and max it will be added in the frame
         for i in range(self.predator_num):
+            if i==predator_id:
+                continue
             if (min_pred_loc[0] <= self._predator_location[i][0] <= max_pred_loc[0] 
             and 
             min_pred_loc[1] <= self._predator_location[i][1] <= max_pred_loc[1]):
-                frame[2, self._predator_location[i][0]-min_pred_loc[0], self._predator_location[i][1]-min_pred_loc[1]] = self.render_scale 
+                loc_x = self._predator_location[i][0]-min_pred_loc[0]
+                loc_y = self._predator_location[i][1]-min_pred_loc[1]
+                frame[2, loc_x, loc_y] = self.render_scale 
+                # frame[2, loc_x, loc_y] = self.pred_communication[i]
+                if self.communication_bits > 0:
+                    frame[3, loc_x, loc_y] = self.pred_communication[i]
+        
         
         for i in range(self.prey_num):
             if (min_pred_loc[0] <= self._prey_location[i][0] <= max_pred_loc[0] 
@@ -246,7 +272,7 @@ class PredatorPreyEnv(gym.Env):
         
         return frame
 
-    def _render_prey_frame(self, prey_id:int=None):
+    def _render_prey_frame(self, prey_id:int=1):
         # the prey will be in the centre of the frame and the frame will be of size vision x vision
         # the prey will be red
         # the prey with prey_id will be green
@@ -349,5 +375,5 @@ if __name__=='__main__':
         prey_action = env.action_space_prey.sample()
         print(pred_action, prey_action)
         obs, rew, done, info = env.step(pred_action, prey_action)
-        print(obs["predator"][0][0, :, :], done)
+        # print(obs["predator"][0][0, :, :], done)
     env.close()
