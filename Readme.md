@@ -5,6 +5,7 @@ Environment is created in the world directory.
 Agent is present in the agent directory.
 Helper functions like optimizers are present in the helper directory.
 
+## To run simply run the train_maddpg.py file after installing the requirements.
 any agent should be represented as a class and should have the following functions:
 1. __init__(self, env, agent_id, **kwargs)
 2. forward(self, state, **kwargs)
